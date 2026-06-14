@@ -1,65 +1,168 @@
-import Image from "next/image";
+"use client";
+import { useEffect, useState } from "react";
+import {
+  ComposedChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell,
+} from "recharts";
+import { KpiCard } from "@/components/ui/KpiCard";
+import { api } from "@/lib/api";
+import { formatMXN, monthName, currentYearMonth } from "@/lib/utils";
+import type { DashboardSummary } from "@/lib/types";
 
-export default function Home() {
+export default function DashboardPage() {
+  const { year, month } = currentYearMonth();
+  const [data, setData] = useState<DashboardSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .get<DashboardSummary>(`/analytics/dashboard?year=${year}&month=${month}`)
+      .then(setData)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [year, month]);
+
+  if (loading) return <div className="text-gray-500 text-sm">Cargando dashboard...</div>;
+  if (!data) return <div className="text-red-500 text-sm">Error al cargar datos.</div>;
+
+  const historyData = data.monthly_history.map((h) => ({
+    label: `${monthName(h.month).slice(0, 3)} ${h.year}`,
+    Ingresos: Number(h.total_income),
+    Gastos: Number(h.total_expenses),
+    Deudas: Number(h.total_debt_payments),
+  }));
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="space-y-8 max-w-7xl mx-auto">
+      <div>
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <p className="text-gray-500 text-sm mt-1">
+          {monthName(month)} {year}
+        </p>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <KpiCard
+          label="Ingresos del mes"
+          value={formatMXN(data.total_income)}
+          variant="green"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+        <KpiCard
+          label="Gastos del mes"
+          value={formatMXN(data.total_expenses)}
+          variant="red"
+        />
+        <KpiCard
+          label="Pagos de deuda"
+          value={formatMXN(data.total_debt_payments)}
+          variant="amber"
+        />
+        <KpiCard
+          label="Balance neto"
+          value={formatMXN(data.net_balance)}
+          variant={Number(data.net_balance) >= 0 ? "green" : "red"}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Breakdown por categoría */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-600 mb-4">Gastos por categoría</h2>
+          {data.category_breakdown.length === 0 ? (
+            <p className="text-gray-400 text-sm">Sin datos</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <PieChart>
+                <Pie
+                  data={data.category_breakdown}
+                  dataKey="total"
+                  nameKey="category_name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                  labelLine={false}
+                >
+                  {data.category_breakdown.map((c) => (
+                    <Cell key={c.category_id} fill={c.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v) => formatMXN(v as number)} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        {/* Deuda total activa */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-600 mb-1">Deuda activa total</h2>
+          <p className="text-3xl font-bold text-amber-600 mb-4">
+            {formatMXN(data.total_active_debt)}
           </p>
+          <div className="space-y-3">
+            {data.active_debts.map((d) => (
+              <div key={d.plan_id}>
+                <div className="flex justify-between text-xs text-gray-500 mb-1">
+                  <span>
+                    {d.bank_name} · {d.concept}
+                  </span>
+                  <span>{d.paid_percentage}%</span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div
+                    className="bg-brand-blue h-2 rounded-full"
+                    style={{ width: `${d.paid_percentage}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                  <span>Restante: {formatMXN(d.remaining_balance)}</span>
+                  {d.next_payment_date && (
+                    <span>
+                      Próx: {formatMXN(d.next_payment_amount ?? 0)} · {d.next_payment_date}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+            {data.active_debts.length === 0 && (
+              <p className="text-gray-400 text-sm">Sin deudas activas</p>
+            )}
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      </div>
+
+      {/* Balance mensual histórico */}
+      <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <h2 className="text-sm font-semibold text-gray-600 mb-4">Balance mensual (últimos 6 meses)</h2>
+        <ResponsiveContainer width="100%" height={260}>
+          <ComposedChart data={historyData}>
+            <XAxis dataKey="label" tick={{ fill: "#6b7280", fontSize: 12 }} />
+            <YAxis tick={{ fill: "#6b7280", fontSize: 12 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+            <Tooltip formatter={(v) => formatMXN(v as number)} />
+            <Legend />
+            <Bar dataKey="Ingresos" fill="#10b981" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="Gastos" fill="#ef4444" radius={[3, 3, 0, 0]} />
+            <Bar dataKey="Deudas" fill="#f59e0b" radius={[3, 3, 0, 0]} />
+          </ComposedChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Etiquetas */}
+      {data.tag_breakdown.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-600 mb-4">Distribución por etiqueta</h2>
+          <div className="flex gap-6">
+            {data.tag_breakdown.map((t) => (
+              <div key={t.tag} className="text-center">
+                <p className="text-2xl font-bold">{t.percentage}%</p>
+                <p className="text-xs text-gray-500 mt-1">{t.tag}</p>
+                <p className="text-sm text-gray-600">{formatMXN(t.total)}</p>
+              </div>
+            ))}
+          </div>
         </div>
-      </main>
+      )}
     </div>
   );
 }
