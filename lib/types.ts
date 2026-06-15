@@ -7,6 +7,7 @@ export interface ExpenseResponse {
   tag: "FIJO" | "VARIABLE" | "HORMIGA";
   payment_method: "EFECTIVO" | "DEBITO" | "CREDITO" | "TRANSFERENCIA";
   expense_date: string;
+  account_id: string | null;
   created_at: string;
 }
 
@@ -23,6 +24,7 @@ export interface IncomeResponse {
   source: string;
   note: string | null;
   income_date: string;
+  account_id: string | null;
   created_at: string;
 }
 
@@ -161,6 +163,71 @@ export interface DebtSummaryItem {
   next_payment_date: string | null;
 }
 
+export interface Account {
+  id: string;
+  account_type: "DEBITO" | "CREDITO";
+  bank_name: string;
+  color: string;
+  credit_limit: number | null;
+  cut_day: number | null;
+  payment_due_day: number | null;
+  created_at: string;
+}
+
+export interface AccountMovement {
+  id: string;
+  account_id: string;
+  movement_type: "CAPITAL_INICIAL" | "AJUSTE_CAPITAL" | "TRANSFER_IN" | "TRANSFER_OUT";
+  amount: number;
+  movement_date: string;
+  note: string | null;
+  related_account_id: string | null;
+  created_at: string;
+}
+
+export interface AccountStatusResponse {
+  account_id: string;
+  account_type: "DEBITO" | "CREDITO";
+  bank_name: string;
+  color: string;
+  balance: number | null;
+  credit_limit: number | null;
+  cut_day: number | null;
+  payment_due_day: number | null;
+  current_cycle_charges: number | null;
+  total_owed: number | null;
+  available_limit: number | null;
+  utilization_pct: number | null;
+  next_payment_amount: number | null;
+  next_payment_date: string | null;
+  days_to_cut: number | null;
+  days_to_payment: number | null;
+}
+
+export interface CreditCardStatusItem {
+  account_id: string;
+  bank_name: string;
+  color: string;
+  credit_limit: number;
+  cut_day: number;
+  payment_due_day: number;
+  current_cycle_charges: number;
+  total_owed: number;
+  available_limit: number;
+  utilization_pct: number;
+  next_payment_amount: number;
+  next_payment_date: string | null;
+  days_to_cut: number;
+  days_to_payment: number;
+}
+
+export interface DebitAccountItem {
+  account_id: string;
+  bank_name: string;
+  color: string;
+  balance: number;
+}
+
 export interface DashboardSummary {
   year: number;
   month: number;
@@ -173,4 +240,6 @@ export interface DashboardSummary {
   tag_breakdown: TagBreakdown[];
   monthly_history: MonthlyBalancePoint[];
   active_debts: DebtSummaryItem[];
+  credit_card_status: CreditCardStatusItem[];
+  debit_accounts: DebitAccountItem[];
 }

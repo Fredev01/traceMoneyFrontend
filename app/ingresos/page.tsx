@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Pencil, X } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAccountsStore } from "@/store/accounts-store";
 import { formatMXN, currentYearMonth } from "@/lib/utils";
 import type { IncomeResponse } from "@/lib/types";
 
@@ -9,6 +10,7 @@ const SOURCES = ["SUELDO", "FREELANCE", "BONO", "INVERSION", "RENTA", "OTRO"];
 
 export default function IngresosPage() {
   const { year, month } = currentYearMonth();
+  const { accounts, fetchAccounts } = useAccountsStore();
   const [incomes, setIncomes] = useState<IncomeResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -17,9 +19,12 @@ export default function IngresosPage() {
     source: "SUELDO",
     income_date: new Date().toISOString().split("T")[0],
     note: "",
+    account_id: "",
   });
   const [editing, setEditing] = useState<IncomeResponse | null>(null);
-  const [editForm, setEditForm] = useState({ amount: "", source: "SUELDO", income_date: "", note: "" });
+  const [editForm, setEditForm] = useState({ amount: "", source: "SUELDO", income_date: "", note: "", account_id: "" });
+
+  const debitAccounts = accounts.filter((a) => a.account_type === "DEBITO");
 
   async function load() {
     setLoading(true);
@@ -28,19 +33,19 @@ export default function IngresosPage() {
     setLoading(false);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); fetchAccounts(); }, []);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    await api.post("/income", { ...form, amount: Number(form.amount), note: form.note || null });
+    await api.post("/income", { ...form, amount: Number(form.amount), note: form.note || null, account_id: form.account_id || null });
     setShowForm(false);
-    setForm({ ...form, amount: "", note: "" });
+    setForm({ ...form, amount: "", note: "", account_id: "" });
     await load();
   }
 
   function startEdit(i: IncomeResponse) {
     setEditing(i);
-    setEditForm({ amount: String(i.amount), source: i.source, income_date: i.income_date, note: i.note ?? "" });
+    setEditForm({ amount: String(i.amount), source: i.source, income_date: i.income_date, note: i.note ?? "", account_id: i.account_id ?? "" });
   }
 
   async function handleUpdate(e: React.FormEvent) {
@@ -51,6 +56,7 @@ export default function IngresosPage() {
       source: editForm.source,
       income_date: editForm.income_date,
       note: editForm.note || null,
+      account_id: editForm.account_id || null,
     });
     setEditing(null);
     await load();
@@ -91,6 +97,13 @@ export default function IngresosPage() {
           <div>
             <label className="text-xs text-gray-500">Nota (opcional)</label>
             <input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} className="w-full mt-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-blue" />
+          </div>
+          <div>
+            <label className="text-xs text-gray-500">Abona a tarjeta (opcional)</label>
+            <select value={form.account_id} onChange={(e) => setForm({ ...form, account_id: e.target.value })} className="w-full mt-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-blue">
+              <option value="">Sin asignar</option>
+              {debitAccounts.map((a) => <option key={a.id} value={a.id}>{a.bank_name}</option>)}
+            </select>
           </div>
           <div className="col-span-2 flex gap-3 justify-end">
             <button type="button" onClick={() => setShowForm(false)} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2">Cancelar</button>
@@ -171,6 +184,13 @@ export default function IngresosPage() {
               <div>
                 <label className="text-xs text-gray-500">Nota (opcional)</label>
                 <input value={editForm.note} onChange={(e) => setEditForm({ ...editForm, note: e.target.value })} className="w-full mt-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-blue" />
+              </div>
+              <div>
+                <label className="text-xs text-gray-500">Abona a tarjeta</label>
+                <select value={editForm.account_id} onChange={(e) => setEditForm({ ...editForm, account_id: e.target.value })} className="w-full mt-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-blue">
+                  <option value="">Sin asignar</option>
+                  {debitAccounts.map((a) => <option key={a.id} value={a.id}>{a.bank_name}</option>)}
+                </select>
               </div>
             </div>
             <div className="flex gap-3 justify-end">

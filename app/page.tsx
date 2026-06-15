@@ -163,6 +163,87 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Tarjetas de débito */}
+      {data.debit_accounts && data.debit_accounts.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-600 mb-4">Saldo tarjetas de débito</h2>
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {data.debit_accounts.map((d) => (
+              <div key={d.account_id} className="rounded-lg p-4 border border-gray-100 flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: d.color }} />
+                  <span className="text-xs text-gray-500 truncate">{d.bank_name}</span>
+                </div>
+                <p className={`text-xl font-bold ${Number(d.balance) >= 0 ? "text-emerald-600" : "text-red-500"}`}>
+                  {formatMXN(d.balance)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Estado tarjetas de crédito */}
+      {data.credit_card_status && data.credit_card_status.length > 0 && (
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-semibold text-gray-600 mb-4">Tarjetas de crédito</h2>
+          <div className="space-y-5">
+            {data.credit_card_status.map((c) => {
+              const pct = Math.min(Math.max(Number(c.utilization_pct), 0), 100);
+              const barColor = pct >= 80 ? "#ef4444" : pct >= 50 ? "#f59e0b" : "#10b981";
+              const cutAlert = Number(c.days_to_cut) <= 5;
+              const payAlert = Number(c.days_to_payment) <= 5;
+              return (
+                <div key={c.account_id} className="border border-gray-100 rounded-lg p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: c.color }} />
+                      <span className="font-medium text-sm">{c.bank_name}</span>
+                    </div>
+                    <div className="flex gap-3 text-xs">
+                      {cutAlert && (
+                        <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                          Corte en {c.days_to_cut}d
+                        </span>
+                      )}
+                      {payAlert && (
+                        <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-full">
+                          Pago en {c.days_to_payment}d
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-400">Disponible</p>
+                      <p className="font-semibold text-green-600">{formatMXN(c.available_limit)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Cargos ciclo</p>
+                      <p className="font-semibold text-amber-600">{formatMXN(c.current_cycle_charges)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400">Próximo pago</p>
+                      <p className="font-semibold text-red-600">{formatMXN(c.next_payment_amount)}</p>
+                      {c.next_payment_date && <p className="text-xs text-gray-400">{c.next_payment_date}</p>}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                      <span>Utilización</span>
+                      <span>{pct.toFixed(1)}% de {formatMXN(c.credit_limit)}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div className="h-2 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Pencil, X, ChevronLeft, ChevronRight } from "lucide-react";
 import { useExpensesStore } from "@/store/expenses-store";
+import { useAccountsStore } from "@/store/accounts-store";
 import { TagBadge } from "@/components/ui/Badge";
 import { formatMXN, currentYearMonth } from "@/lib/utils";
 import type { ExpenseResponse } from "@/lib/types";
@@ -27,6 +28,7 @@ function getWeekRange(offset = 0): { start: string; end: string; label: string }
 export default function GastosPage() {
   const { expenses, categories, loading, fetchByWeek, fetchByMonth, fetchCategories, createExpense, updateExpense, deleteExpense } =
     useExpensesStore();
+  const { accounts, fetchAccounts } = useAccountsStore();
   const [view, setView] = useState<"semanal" | "mensual">("semanal");
   const [weekOffset, setWeekOffset] = useState(0);
   const { year, month } = currentYearMonth();
@@ -38,6 +40,7 @@ export default function GastosPage() {
     tag: "VARIABLE",
     payment_method: "EFECTIVO",
     expense_date: new Date().toISOString().split("T")[0],
+    account_id: "",
   });
   const [editing, setEditing] = useState<ExpenseResponse | null>(null);
   const [editForm, setEditForm] = useState({
@@ -47,10 +50,17 @@ export default function GastosPage() {
     tag: "VARIABLE",
     payment_method: "EFECTIVO",
     expense_date: "",
+    account_id: "",
   });
+
+  const cardAccounts = (method: string) =>
+    accounts.filter((a) =>
+      method === "DEBITO" ? a.account_type === "DEBITO" : method === "CREDITO" ? a.account_type === "CREDITO" : false
+    );
 
   useEffect(() => {
     fetchCategories();
+    fetchAccounts();
   }, []);
 
   useEffect(() => {
@@ -64,7 +74,7 @@ export default function GastosPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    await createExpense({ ...form, amount: Number(form.amount) });
+    await createExpense({ ...form, amount: Number(form.amount), account_id: form.account_id || null });
     setShowForm(false);
     setForm({ ...form, amount: "", description: "" });
   }
@@ -78,13 +88,14 @@ export default function GastosPage() {
       tag: e.tag,
       payment_method: e.payment_method,
       expense_date: e.expense_date,
+      account_id: e.account_id ?? "",
     });
   }
 
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
     if (!editing) return;
-    await updateExpense(editing.id, { ...editForm, amount: Number(editForm.amount) });
+    await updateExpense(editing.id, { ...editForm, amount: Number(editForm.amount), account_id: editForm.account_id || null });
     setEditing(null);
   }
 
@@ -167,12 +178,27 @@ export default function GastosPage() {
             <label className="text-xs text-gray-500">Método de pago</label>
             <select
               value={form.payment_method}
-              onChange={(e) => setForm({ ...form, payment_method: e.target.value })}
+              onChange={(e) => setForm({ ...form, payment_method: e.target.value, account_id: "" })}
               className="w-full mt-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-blue"
             >
               {METHODS.map((m) => <option key={m}>{m}</option>)}
             </select>
           </div>
+          {(form.payment_method === "DEBITO" || form.payment_method === "CREDITO") && (
+            <div>
+              <label className="text-xs text-gray-500">Tarjeta</label>
+              <select
+                value={form.account_id}
+                onChange={(e) => setForm({ ...form, account_id: e.target.value })}
+                className="w-full mt-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-blue"
+              >
+                <option value="">Sin asignar</option>
+                {cardAccounts(form.payment_method).map((a) => (
+                  <option key={a.id} value={a.id}>{a.bank_name}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="col-span-2 flex gap-3 justify-end">
             <button type="button" onClick={() => setShowForm(false)} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2">
               Cancelar
@@ -328,12 +354,27 @@ export default function GastosPage() {
                 <label className="text-xs text-gray-500">Método de pago</label>
                 <select
                   value={editForm.payment_method}
-                  onChange={(e) => setEditForm({ ...editForm, payment_method: e.target.value })}
+                  onChange={(e) => setEditForm({ ...editForm, payment_method: e.target.value, account_id: "" })}
                   className="w-full mt-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-blue"
                 >
                   {METHODS.map((m) => <option key={m}>{m}</option>)}
                 </select>
               </div>
+              {(editForm.payment_method === "DEBITO" || editForm.payment_method === "CREDITO") && (
+                <div>
+                  <label className="text-xs text-gray-500">Tarjeta</label>
+                  <select
+                    value={editForm.account_id}
+                    onChange={(e) => setEditForm({ ...editForm, account_id: e.target.value })}
+                    className="w-full mt-1 bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-blue"
+                  >
+                    <option value="">Sin asignar</option>
+                    {cardAccounts(editForm.payment_method).map((a) => (
+                      <option key={a.id} value={a.id}>{a.bank_name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
             <div className="flex gap-3 justify-end">
               <button type="button" onClick={() => setEditing(null)} className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2">

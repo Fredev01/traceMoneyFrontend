@@ -1,13 +1,14 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Receipt, TrendingUp, CreditCard, Settings } from "lucide-react";
+import { LayoutDashboard, Receipt, TrendingUp, CreditCard, Wallet, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/gastos", label: "Gastos", icon: Receipt },
   { href: "/ingresos", label: "Ingresos", icon: TrendingUp },
+  { href: "/tarjetas", label: "Tarjetas", icon: Wallet },
   { href: "/deudas", label: "Deudas", icon: CreditCard },
   { href: "/configuracion", label: "Configuración", icon: Settings },
 ];

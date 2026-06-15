@@ -21,6 +21,7 @@ interface ExpensesState {
     tag: string;
     payment_method: string;
     expense_date: string;
+    account_id?: string | null;
   }) => Promise<void>;
   updateExpense: (id: string, data: {
     amount: number;
@@ -29,6 +30,7 @@ interface ExpensesState {
     tag: string;
     payment_method: string;
     expense_date: string;
+    account_id?: string | null;
   }) => Promise<void>;
   deleteExpense: (id: string) => Promise<void>;
 }
